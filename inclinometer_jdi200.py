@@ -1,9 +1,24 @@
 import minimalmodbus, serial
 import struct
-
+import time
 
 class InclinometerJdi200:
     def __init__(self, serial_port_name, rs485_address):
+        '''
+        #tramite scheda
+        self.instrument = minimalmodbus.Instrument(serial_port_name, rs485_address, debug=False)
+        self.instrument.serial.baudrate = 9600
+        self.instrument.serial.bytesize = 8
+        self.instrument.serial.parity = serial.PARITY_NONE
+        self.instrument.serial.stopbits = 1
+        self.instrument.serial.timeout = 0.2
+        self.instrument.mode = minimalmodbus.MODE_RTU
+        self.instrument.clear_buffers_before_each_transaction = True
+
+
+
+        '''
+        #diretto con inclinometro
         self.instrument = minimalmodbus.Instrument(serial_port_name, rs485_address)
         self.instrument.serial.baudrate = 19200
         self.instrument.serial.bytesize = 8
@@ -14,8 +29,26 @@ class InclinometerJdi200:
         self.instrument.clear_buffers_before_each_transaction = True
 
     def get_id(self):
-        return self.instrument.read_string(24, number_of_registers=8).rstrip(chr(0))
+        return self.instrument.read_string(24, number_of_registers = 8).rstrip(chr(0))
 
+        '''
+        #test
+        max_retry = 20
+        while max_retry > 0:
+            try:
+
+                x = self.instrument.read_string(24, number_of_registers = 8).rstrip(chr(0))
+            except:
+                pass
+            max_retry -= 1
+            time.sleep(0.5)
+            print(max_retry)
+
+
+        return x'''
+
+    def get_err(self):
+        return self.instrument.read_float(100)
     def get_x(self):
         return self.instrument.read_float(206)
 
@@ -40,6 +73,37 @@ class InclinometerJdi200:
     def get_length_filter(self):
         return self.instrument.read_registers(321,1)
 
+    def get_seq_count(self):
+        return self.instrument.read_long(202)
+
+
+    def set_filter_on(self, filteron):
+        max_retry = 3
+        while max_retry > 0:
+            try:
+                # curr_sampling_rate = self.get_sampling_rate()
+                # if curr_sampling_rate != sampling_rate:
+                return self.instrument.write_register(320, filteron, functioncode=6)
+            except:
+                pass #self.main_log.info('inclinometer: NoResponseError, will retry {} times'.format(max_retry))
+            max_retry -= 1
+
+        raise custom_exceptions.DronexNoResponse()
+
+
+    def set_length_filter(self, length_filteron):
+        max_retry = 3
+        while max_retry > 0:
+            try:
+                # curr_sampling_rate = self.get_sampling_rate()
+                # if curr_sampling_rate != sampling_rate:
+                return self.instrument.write_register(321, length_filteron, functioncode=6)
+            except:
+                pass #self.main_log.info('inclinometer: NoResponseError, will retry {} times'.format(max_retry))
+            max_retry -= 1
+
+        raise custom_exceptions.DronexNoResponse()
+
 
     def set_sampling_rate(self, sampling_rate):
         """
@@ -63,7 +127,7 @@ class InclinometerJdi200:
                 # if curr_sampling_rate != sampling_rate:
                 return self.instrument.write_register(301, sampling_rate, functioncode=6)
             except:
-                self.main_log.info('inclinometer: NoResponseError, will retry {} times'.format(max_retry))
+                pass #self.main_log.info('inclinometer: NoResponseError, will retry {} times'.format(max_retry))
             max_retry -= 1
 
         raise custom_exceptions.DronexNoResponse()
@@ -101,32 +165,6 @@ class InclinometerJdi200:
 
         raise custom_exceptions.DronexNoResponse()
 
-    def set_filter_on(self, filteron):
-        max_retry = 3
-        while max_retry > 0:
-            try:
-                # curr_sampling_rate = self.get_sampling_rate()
-                # if curr_sampling_rate != sampling_rate:
-                return self.instrument.write_register(320, filteron, functioncode=6)
-            except:
-                self.main_log.info('inclinometer: NoResponseError, will retry {} times'.format(max_retry))
-            max_retry -= 1
-
-        raise custom_exceptions.DronexNoResponse()
-
-
-    def set_length_filter(self, length_filteron):
-        max_retry = 3
-        while max_retry > 0:
-            try:
-                # curr_sampling_rate = self.get_sampling_rate()
-                # if curr_sampling_rate != sampling_rate:
-                return self.instrument.write_register(321, length_filteron, functioncode=6)
-            except:
-                self.main_log.info('inclinometer: NoResponseError, will retry {} times'.format(max_retry))
-            max_retry -= 1
-
-        raise custom_exceptions.DronexNoResponse()
 
     def non_volatile_save(self):
         # self.instrument.write_register(312, 20051)  # 20051 is 'ns' in decimal
